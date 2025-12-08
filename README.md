@@ -4,11 +4,11 @@ A verbose query builder for `QueryDescendants`.
 
 ## Installation
 
-Add `upio/query-builder` to your `wally.toml`:
+Add `notpoiu/query-builder` to your `wally.toml`:
 
 ```toml
 [dependencies]
-QueryBuilder = "upio/query-builder@0.1.0"
+QueryBuilder = "notpoiu/query-builder@0.1.0"
 ```
 
 ## Usage

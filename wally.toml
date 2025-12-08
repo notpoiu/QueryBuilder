@@ -1,8 +1,9 @@
 [package]
-name = "upio/query-builder"
+name = "notpoiu/query-builder"
 version = "0.1.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
+license = "MIT"
 description = "A verbose query builder for QueryDescendants."
 
 [dependencies]
