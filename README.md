@@ -2,6 +2,8 @@
 
 A verbose query builder for `QueryDescendants`.
 
+Wally Package: [QueryBuilder](https://github.com/notpoiu/query-builder)
+
 ## Installation
 
 Add `notpoiu/query-builder` to your `wally.toml`:
