@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rokit
+        uses: Compey/setup-rokit@v1
+
+      - name: Install Dependencies
+        run: wally install
+
+      - name: Build Rojo Model
+        run: rojo build -o query-builder.rbxm
+
+      - name: Bundle with Darklua
+        run: darklua process src/init.luau dist/query-builder.luau
+
+      - name: Zip Source
+        run: zip -r src.zip src
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            query-builder.rbxm
+            dist/query-builder.luau
+            src.zip

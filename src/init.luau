@@ -53,8 +53,43 @@ export type QueryBuilder = {
 	Or: (self: QueryBuilder, ...QueryBuilder) -> QueryBuilder,
 	Also: (self: QueryBuilder, ...QueryBuilder) -> QueryBuilder,
 	
+	-- Define aliases
+	define: (val: any) -> QueryBuilder,
+	defineValue: (val: any) -> QueryBuilder,
+	dv: (val: any) -> QueryBuilder,
+	v: (val: any) -> QueryBuilder,
+	value: (val: any) -> QueryBuilder,
+	
+	fromOperation: (callback: (any) -> boolean) -> QueryBuilder,
 	ToQuery: (self: QueryBuilder) -> string,
 }
+
+
+local Reflector
+do
+	function LoadReflector(paths: {any})
+		for _, path in next, paths do
+			if not path then continue end
+
+			pcall(function()
+				Reflector = (require :: any)(path)
+			end)
+
+			if Reflector then break end
+		end
+	end
+
+	if script then
+		LoadReflector({
+			script:FindFirstChild("Reflector"),
+			"./Reflector",
+		})
+	else
+		LoadReflector({
+			"./Reflector",
+		})
+	end
+end
 
 function QueryBuilder.new(): QueryBuilder
 	local self = setmetatable({
@@ -68,6 +103,114 @@ function QueryBuilder.new(): QueryBuilder
 		_Alternatives = {},
 	}, QueryBuilder)
 	return (self :: any) :: QueryBuilder
+end
+
+local function BuildQueryFromData(data)
+	local qb = QueryBuilder.new()
+	if data.Class then qb:SetClass(data.Class) end
+	if data.Name then qb:SetName(data.Name) end
+	
+	for _, tag in next, data.Tags do
+		qb:AddTag(tag)
+	end
+	
+	qb:SetProperties(data.Props)
+	
+	if data.Attributes then
+		for k, v in next, data.Attributes do
+			qb:SetAttribute(k, v)
+		end
+	end
+	
+	-- Handle Not (Negations)
+	for _, note in next, data.Not do
+		local negation = QueryBuilder.new()
+		if note.Type == "Prop" then -- Inequality
+			if note.Key == "ClassName" then negation:SetClass(note.Val)
+			elseif note.Key == "Name" then negation:SetName(note.Val)
+			else negation:SetProperty(note.Key, note.Val) end
+		elseif note.Type == "Tag" then
+			negation:AddTag(note.Val)
+		end
+		
+		qb:Not(negation)
+	end
+	
+	-- Handle Has/NotHas (Children)
+	local function ProcessHas(list, negate)
+		for _, check in next, list do
+			local target = QueryBuilder.new()
+			if check.Mode == "Name" then
+				target:SetName(check.Target)
+			elseif check.Mode == "Class" then
+				target:SetClass(check.Target)
+			end
+			
+			if check.Props then
+				for k,v in next, check.Props do target:SetProperty(k, v) end
+			end
+			if check.Attributes then
+				for k,v in next, check.Attributes do target:SetAttribute(k, v) end
+			end
+			
+			if check.NotProps or check.NotAttributes then
+			    local negation = QueryBuilder.new()
+			    if check.NotProps then
+			        for _, p in next, check.NotProps do negation:SetProperty(p.Key, p.Val) end
+		        end
+		        if check.NotAttributes then
+		            for _, a in next, check.NotAttributes do negation:SetAttribute(a.Key, a.Val) end
+	            end
+	            target:Not(negation)
+			end
+			
+			-- Recursive = true (Descendant) -> :has(target)
+			-- Recursive = false (Child) -> :has(> target)
+			
+			local hasQuery 
+			if check.Recursive then
+				-- If recursive, we just look for dynamic existence.
+				-- By default :has(#Name) checks descendants.
+				hasQuery = target
+			else
+				-- If non-recursive, we need direct child combinator
+				hasQuery = QueryBuilder.new():Child(target)
+			end
+			
+			if negate then
+				qb:Not(QueryBuilder.new():Has(hasQuery))
+			else
+				qb:Has(hasQuery)
+			end
+		end
+	end
+	
+	if data.Has then ProcessHas(data.Has, false) end
+	if data.NotHas then ProcessHas(data.NotHas, true) end
+	
+	return qb
+end
+
+for _, key in next, { "define", "defineValue", "dv", "v", "value" } do
+	QueryBuilder[key] = Reflector.Define
+end
+
+function QueryBuilder.fromOperation(callback: (any) -> boolean): QueryBuilder
+	local dataList, err = Reflector.Parse(callback)
+	assert(dataList, "Failed to parse operation: " .. tostring(err))
+	
+	local mainQB = nil
+	
+	for _, data in next, dataList do
+	    local q = BuildQueryFromData(data)
+	    if not mainQB then
+	        mainQB = q
+        else
+            mainQB:Or(q)
+        end
+	end
+	
+	return mainQB :: QueryBuilder
 end
 
 local function EnsureInstance(self: any): QueryBuilder
