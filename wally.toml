@@ -1,0 +1,10 @@
+[package]
+name = "upio/query-builder"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+description = "A verbose query builder for QueryDescendants."
+
+[dependencies]
+
+[dev-dependencies]
