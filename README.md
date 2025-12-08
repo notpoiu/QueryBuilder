@@ -3,6 +3,7 @@
 A verbose query builder for `QueryDescendants`.
 
 Devforum Post: [QueryBuilder](https://devforum.roblox.com/t/querybuilder-querydescendants-query-builder/4137223)
+
 Wally Package: [QueryBuilder](https://wally.run/package/notpoiu/query-builder)
 
 ## Installation
