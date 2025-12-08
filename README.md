@@ -2,7 +2,7 @@
 
 A verbose query builder for `QueryDescendants`.
 
-Wally Package: [QueryBuilder](https://github.com/notpoiu/query-builder)
+Wally Package: [QueryBuilder](https://wally.run/package/notpoiu/query-builder)
 
 ## Installation
 
