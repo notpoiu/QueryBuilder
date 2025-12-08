@@ -235,6 +235,8 @@ function QueryBuilder:ToQuery(): string
 	-- 7. Combinator
 	local combinator = self._Combinator
 	if combinator then
+		assert(combinator.Query ~= self, "Recursive combinator detected")
+		
 		local query = combinator.Query:ToQuery() :: string
 		if compound == "" then
 			compound = (combinator.Type :: string) .. " " .. query
@@ -246,6 +248,8 @@ function QueryBuilder:ToQuery(): string
 	-- 8. Alternatives
 	if #(self._Alternatives :: any) > 0 then
 		for _, alt in next, self._Alternatives :: any do
+            if alt == self then continue end
+			
 			local altStr = (alt :: any):ToQuery() :: string
 			if compound == "" then
 				compound = altStr
