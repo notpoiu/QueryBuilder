@@ -1,9 +1,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      description:
+        description: "Release Notes / Description of changes"
+        required: true
+        type: string
 
 jobs:
   release:
@@ -20,6 +23,12 @@ jobs:
       - name: Install Dependencies
         run: wally install
 
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep "^version =" wally.toml | cut -d '"' -f 2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Build Rojo Model
         run: rojo build -o query-builder.rbxm
 
@@ -32,6 +41,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          body: ${{ inputs.description }}
           files: |
             query-builder.rbxm
             dist/query-builder.luau
