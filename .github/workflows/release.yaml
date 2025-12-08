@@ -30,13 +30,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build Rojo Model
-        run: rojo build -o query-builder.rbxm
+        run: rojo build -o dist/query-builder.rbxm
 
       - name: Bundle with Darklua
         run: darklua process src/init.luau dist/query-builder.luau
-
-      - name: Zip Source
-        run: zip -r src.zip src
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -45,6 +42,5 @@ jobs:
           name: v${{ env.VERSION }}
           body: ${{ inputs.description }}
           files: |
-            query-builder.rbxm
+            dist/query-builder.rbxm
             dist/query-builder.luau
-            src.zip
