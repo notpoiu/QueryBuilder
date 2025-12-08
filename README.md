@@ -125,7 +125,7 @@ local Query = QueryBuilder.fromOperation(function(model)
        and model.Name ~= v("DestroyedModel")
 end):ToQuery()
 
--- Output: ":not(#DestroyedModel):has(> #Head):has(#Humanoid)"
+-- Output: ":not(#DestroyedModel):has(> #Head):has(>> Humanoid)"
 ```
 
 ### Complex Queries (Alternatives)
