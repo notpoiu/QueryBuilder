@@ -174,6 +174,7 @@ function Reflector.Parse(callback)
             Methods = {
                 FindFirstChild = TraceChildInterceptor("Name"),
                 FindFirstChildWhichIsA = TraceChildInterceptor("Class"),
+                FindFirstChildOfClass = TraceChildInterceptor("Class"),
                 GetAttribute = function(_, key)
                     -- Return a token representing the value of this attribute
                     return CreateToken({ Type = "Attribute", Key = key })
@@ -311,6 +312,8 @@ function Reflector.Parse(callback)
                      return nil
                  end
             end
+            
+            methods.FindFirstChildOfClass = methods.FindFirstChildWhichIsA
     
             methods.GetAttribute = function(_, key)
                  local val = state["Attr_"..key]

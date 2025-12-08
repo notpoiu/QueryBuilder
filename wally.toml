@@ -1,10 +1,13 @@
 [package]
 name = "notpoiu/query-builder"
-version = "0.1.1"
+version = "0.2.0"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 license = "MIT"
 description = "A verbose query builder for QueryDescendants."
+
+exclude = ["**"]
+include = ["LICENSE", "src", "src**", "default.project.json", "wally.toml"]
 
 [dependencies]
 
