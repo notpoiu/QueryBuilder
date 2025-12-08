@@ -20,10 +20,10 @@ local Query = QueryBuilder.new()
     :SetClass("Model")
     :SetName("Car")
     :Child(
-        QueryBuilder.new()
+        QueryBuilder
             :SetClass("VehicleSeat")
             :SetProperty("Disabled", false)
-            :Not(QueryBuilder.new():AddTag("Broken"))
+            :Not(QueryBuilder:AddTag("Broken"))
     )
     :ToQuery()
 
