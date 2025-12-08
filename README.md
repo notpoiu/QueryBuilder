@@ -30,7 +30,7 @@ query-builder = "notpoiu/query-builder@0.2.0"
 | Method                           | Description                              | Logic            |
 | :------------------------------- | :--------------------------------------- | :--------------- |
 | `:Child(query)`                  | Matches direct children                  | `:has(> query)`  |
-| `:Descendant(query)`             | Matches descendants                      | `:has(query)`    |
+| `:Descendant(query)`             | Matches descendants                      | `:has(>> query)` |
 | `:Not(query)`                    | Negates the query                        | `:not(query)`    |
 | `:Or(query)` <br> `:Also(query)` | Adds an alternative path                 | `query1, query2` |
 | `:Has(query)`                    | Checks for existence of descendant/child | `:has(...)`      |
