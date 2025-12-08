@@ -125,7 +125,7 @@ local Query = QueryBuilder.fromOperation(function(model)
        and model.Name ~= v("DestroyedModel")
 end):ToQuery()
 
--- Output: ":not(#DestroyedModel):has(> #Head):has(>> Humanoid)"
+-- Output: ":not(#DestroyedModel):has(> #Head):has(Humanoid)"
 ```
 
 ### Complex Queries (Alternatives)
@@ -148,7 +148,7 @@ local Query = QueryBuilder.fromOperation(function(part)
     end
 end):ToQuery()
 
--- Output: "#StaticPart, :has(> ProximityPrompt[Name = "Interact"])"
+-- Output: ":has(> ProximityPrompt[Name = "Interact"]), #StaticPart:not(:has(> ProximityPrompt))"
 ```
 
 This allows you to express "A OR B" logic naturally.
