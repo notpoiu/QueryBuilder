@@ -12,7 +12,7 @@ Add `notpoiu/query-builder` to your `wally.toml`:
 
 ```toml
 [dependencies]
-query-builder = "notpoiu/query-builder@0.2.0"
+query-builder = "notpoiu/query-builder@0.2.1"
 ```
 
 ## Documentation
