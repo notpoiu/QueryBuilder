@@ -67,7 +67,7 @@ export type QueryBuilder = {
 
 local Reflector
 if script and script:FindFirstChild("Reflector") then
-	Reflector = require(script:FindFirstChild("Reflector"))
+	Reflector = require(script.Reflector)
 else
 	Reflector = require("./Reflector")
 end
