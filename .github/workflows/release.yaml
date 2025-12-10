@@ -29,6 +29,10 @@ jobs:
           VERSION=$(grep "^version =" wally.toml | cut -d '"' -f 2)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
+      - name: Create Distribution Directory
+        run: |
+          mkdir dist
+
       - name: Build Rojo Model
         run: rojo build -o dist/query-builder.rbxm
 
