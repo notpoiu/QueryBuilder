@@ -426,11 +426,7 @@ function Reflector.Parse(callback)
                 if not exists then table.insert(domain[key], storedVal) end
             end
             
-            -- The original code had a duplicate 'elseif c.Type == "Tag" then' here,
-            -- which was syntactically incorrect. The instruction implies closing the
-            -- previous elseif block and then having the 'Tag' case.
-            -- Assuming the intent was to have this as a separate case, not nested.
-            if c.Type == "Tag" then -- This was likely intended as a separate 'elseif' or 'if'
+            if c.Type == "Tag" then
                  local key = "Tag_" .. tostring(c.Val)
                  domain[key] = {true, false}
             end
@@ -477,7 +473,7 @@ function Reflector.Parse(callback)
                              end
                              return nil
                         end,
-                         FindFirstChildOfClass = function(_, cls, rec) -- same
+                         FindFirstChildOfClass = function(_, cls, rec)
                              local actualCls = cls
                              if type(cls) == "userdata" and TokenData[cls] then actualCls = TokenData[cls].Val end
                              local ck = ChildKey("Class", actualCls, rec == true)
@@ -885,8 +881,6 @@ function Reflector.Parse(callback)
                                     else result.Props[key] = validVal end
                                 end
                             end
-                        -- DEBUG
-
                         
                         elseif valueRequired and validVal == Reflector.NIL_SENTINEL then
                              if isScoped then
