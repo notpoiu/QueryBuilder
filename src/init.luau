@@ -66,29 +66,10 @@ export type QueryBuilder = {
 
 
 local Reflector
-do
-	function LoadReflector(paths: {any})
-		for _, path in next, paths do
-			if not path then continue end
-
-			pcall(function()
-				Reflector = (require :: any)(path)
-			end)
-
-			if Reflector then break end
-		end
-	end
-
-	if script then
-		LoadReflector({
-			script:FindFirstChild("Reflector"),
-			"./Reflector",
-		})
-	else
-		LoadReflector({
-			"./Reflector",
-		})
-	end
+if script and script:FindFirstChild("Reflector") then
+	Reflector = require(script:FindFirstChild("Reflector"))
+else
+	Reflector = require("./Reflector")
 end
 
 function QueryBuilder.new(): QueryBuilder
