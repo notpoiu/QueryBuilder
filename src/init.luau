@@ -269,6 +269,9 @@ end
 
 function QueryBuilder:SetProperty(key: string, value: any): QueryBuilder
 	local instance = EnsureInstance(self)
+    if key == "Name" and type(value) == "string" then
+        return instance:SetName(value)
+    end
 	instance._Properties[key] = value
 	return instance
 end

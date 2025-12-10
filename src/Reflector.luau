@@ -73,9 +73,12 @@ function Reflector.Compare(a, b)
         return da.Val == db.Val
     end
     
-    local valA = da.Type == "Val" and da.Val or da.SimulatedVal
-    local valB = db.Type == "Val" and db.Val or db.SimulatedVal
+    local valA
+    if da.Type == "Val" then valA = da.Val else valA = da.SimulatedVal end
     
+    local valB
+    if db.Type == "Val" then valB = db.Val else valB = db.SimulatedVal end
+
     if valA == Reflector.NIL_SENTINEL then valA = nil end
     if valB == Reflector.NIL_SENTINEL then valB = nil end
     
@@ -406,6 +409,7 @@ function Reflector.Parse(callback)
                 end
                 if not exists then table.insert(domain[key], storedVal) end
             end
+            
             -- The original code had a duplicate 'elseif c.Type == "Tag" then' here,
             -- which was syntactically incorrect. The instruction implies closing the
             -- previous elseif block and then having the 'Tag' case.
@@ -601,7 +605,7 @@ function Reflector.Parse(callback)
             
             if not hasNonNil then
                 -- Inject placeholder 'true' to satisfy existence
-                table.insert(domain[key], true)
+                table.insert(domain[key], Reflector.EXISTENCE_SENTINEL)
             end
         end
         
@@ -642,10 +646,6 @@ function Reflector.Parse(callback)
             
             -- Try random for props
             local isScoped = key:find("::") ~= nil
-            local isTag = key:sub(1,4) == "Tag_"
-            local isChild = key:sub(1,6) == "Child_" and not isScoped
-            local isScopedTag = isScoped and key:find("::Tag_")
-            local isScopedChild = isScoped and key:find("::Child_")
             
             local scopeKey, remainder
             if isScoped then
@@ -654,6 +654,11 @@ function Reflector.Parse(callback)
                  scopeKey = s
                  remainder = r
             end
+
+            local isTag = key:sub(1,4) == "Tag_"
+            local isChild = key:sub(1,6) == "Child_" and not isScoped
+            local isScopedTag = isScoped and remainder:sub(1,4) == "Tag_"
+            local isScopedChild = isScoped and remainder:sub(1,6) == "Child_"
             
             if (not isTag and not isChild) and (not isScopedTag and not isScopedChild) then
                  local nextState = {}
@@ -678,7 +683,7 @@ function Reflector.Parse(callback)
                 Not = {},
                 Has = {},
                 NotHas = {},
-                NotAttributes = {} -- Ensure this exists? Actually specific scope NotAttributes are inside meta.
+                NotAttributes = {}
             }
             
             for _, key in ipairs(keys) do
@@ -702,8 +707,6 @@ function Reflector.Parse(callback)
                      remainder = r
                 end
                 
-
-                
                 if isTag or isChild or (isScoped and type(validVal) == "boolean") then
                     badState[key] = not validVal
                     local success = RunTest(badState)
@@ -715,9 +718,7 @@ function Reflector.Parse(callback)
                             else table.insert(result.Not, {Type="Tag", Val=tagName}) end
                         elseif isScoped then
                             local meta = childChecks[scopeKey]
-                            
                             if meta then
-                                -- Parse Type_Key e.g. Prop_Name or Attr_Test
                                 local typeSep = remainder:find("_")
                                 if typeSep then
                                      local sType = remainder:sub(1, typeSep-1)
@@ -733,8 +734,6 @@ function Reflector.Parse(callback)
                                          meta.Tags = meta.Tags or {}
                                          table.insert(meta.Tags, sKey)
                                      elseif sType == "Child" then
-                                         -- Nested Child (ScopedChild)
-                                         -- key is ScopeKey::Child_...
                                          local childMeta = childChecks[key] 
                                          if validVal then
                                              meta.Has = meta.Has or {}
@@ -764,12 +763,9 @@ function Reflector.Parse(callback)
                              specificBad[key] = badVal
                              local success = RunTest(specificBad)
 
-                             
                              if not success then
-                                 -- It is required that Key ~= BadVal
                                  if isScoped then
                                      local meta = childChecks[scopeKey]
-                                     
                                      if meta then
                                          local typeSep = remainder:find("_")
                                          if typeSep then
@@ -780,7 +776,6 @@ function Reflector.Parse(callback)
                                                   meta.NotAttributes = meta.NotAttributes or {}
                                                   table.insert(meta.NotAttributes, {Key=sKey, Val=badVal})
                                               elseif sType == "Prop" then
-
                                                   meta.NotProps = meta.NotProps or {}
                                                   table.insert(meta.NotProps, {Key=sKey, Val=badVal})
                                               end
@@ -794,7 +789,6 @@ function Reflector.Parse(callback)
                         continue 
                     else
                         -- Check 1: Is it required at all? (Existence Check)
-                        -- Try removing it (Nil)
                         badState[key] = nil
                         local existenceRequired = not RunTest(badState)
                         
@@ -802,17 +796,28 @@ function Reflector.Parse(callback)
                         badState[key] = "__REFLECT_RANDOM__"
                         local valueRequired = not RunTest(badState)
                         
-                        -- DEBUG
-                        -- print("SA Key:", key, "Val:", tostring(validVal), "ExistReq:", existenceRequired, "ValReq:", valueRequired)
-
                         if existenceRequired then
                             if not valueRequired then
                                 -- Existence Only!
                                 if key:sub(1,5) == "Attr_" then
-                                    -- print("Inserting AttributeExistence:", key:sub(6))
                                     table.insert(result.AttributeExistence, key:sub(6))
                                 end
-                                -- Todo: Scoped existence?
+                                
+                                if isScoped then
+                                    local meta = childChecks[scopeKey]
+                                    if meta then
+                                        local typeSep = remainder:find("_")
+                                        if typeSep then
+                                            local sType = remainder:sub(1, typeSep-1)
+                                            local sKey = remainder:sub(typeSep+1)
+                                            
+                                            if sType == "Attr" then
+                                                meta.AttributeExistence = meta.AttributeExistence or {}
+                                                table.insert(meta.AttributeExistence, sKey)
+                                            end
+                                        end
+                                    end
+                                end
                             else
                                 -- Specific Value Required
                                 if isScoped then
@@ -842,14 +847,14 @@ function Reflector.Parse(callback)
                                             result.Attributes[key:sub(6)] = validVal 
                                         end
                                     elseif key:sub(1,4) == "Tag_" then
-                                        if validVal == true then -- Only add if tag is true
+                                        if validVal == true then 
                                             table.insert(result.Tags, key:sub(5))
                                         end
                                     else result.Props[key] = validVal end
                                 end
                             end
                         -- DEBUG
-                        -- print("SA Key:", key, "Val:", tostring(validVal), "ExistReq:", existenceRequired, "ValReq:", valueRequired)
+
                         
                         elseif valueRequired and validVal == Reflector.NIL_SENTINEL then
                              if isScoped then
