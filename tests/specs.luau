@@ -46,6 +46,20 @@ return function()
              end):ToQuery()
              expect(q).ToEqual("[$Level = 5]")
         end)
+        
+        it("should handle HasAttribute (Explicit builder syntax)", function()
+            local q = QueryBuilder.new()
+                :HasAttribute("MyCheck")
+                :ToQuery()
+            expect(q).ToEqual("[$MyCheck]")
+        end)
+        
+        it("should handle HasAttribute via define()", function()
+             local q = QueryBuilder.fromOperation(function(x)
+                 return x:GetAttribute("Exists") ~= define(nil)
+             end):ToQuery()
+             expect(q).ToEqual("[$Exists]")
+        end)
     end)
 
     d("QueryBuilder Children", function()
@@ -141,6 +155,79 @@ return function()
             end):ToQuery()
             expect(q).ToContain("#Part")
             expect(q).ToContain("#InteractablePart")
+        end)
+    end)
+
+    d("QueryBuilder Stress Tests", function()
+        -- 1. Complex :has (Combinators inside has)
+        it("should handle complex :has with nested properties", function()
+             -- :has(> Method.Red[Enabled = true])
+             local q = QueryBuilder.fromOperation(function(x)
+                 local child = x:FindFirstChildWhichIsA("Model")
+                 return table.find(child.Tags, "Red") and child.Name == define("Target")
+             end):ToQuery()
+             
+             
+             -- Expected: :has(> Model.Red[Name = "Target"])
+             expect(q).ToContain(":has(> Model")
+             expect(q).ToContain(".Red") 
+             expect(q).ToContain("Name = \"Target\"")
+        end)
+
+        -- 2. Complex :not (Nested)
+        it("should handle complex :not selectors", function()
+             -- :not(:has(> #BadChild))
+             local q = QueryBuilder.fromOperation(function(x)
+                 return not x:FindFirstChild("BadChild")
+             end):ToQuery()
+             
+             expect(q).ToContain(":not(:has(> #BadChild))")
+        end)
+        
+        -- 3. Mixed Combinators (OR with paths)
+        it("should handle mixed combinators and paths", function()
+             -- #HumanoidRootPart:has(> BodyMover), #Torso:has(> BodyMover)
+             -- This is the repro case, ensuring it stays fixed.
+             local q = QueryBuilder.fromOperation(function(x)
+                local BodyMover = x:FindFirstChildOfClass("BodyMover")
+                if not BodyMover then return false end
+                
+                return x.Name == define("HumanoidRootPart") or x.Name == define("Torso")
+             end):ToQuery()
+             
+             expect(q).ToContain("#HumanoidRootPart:has(> BodyMover)")
+             expect(q).ToContain("#Torso:has(> BodyMover)")
+        end)
+        
+        -- 4. Deep Nesting
+        it("should handle deep nesting", function()
+            local q = QueryBuilder.fromOperation(function(x)
+                local l1 = x:FindFirstChild("L1")
+                local l2 = l1:FindFirstChild("L2")
+                local l3 = l2:FindFirstChild("L3")
+                return l3.Name == define("Final")
+            end):ToQuery()
+            
+            -- :has(> #L1:has(> #L2:has(> #L3[Name = "Final"])))
+            expect(q).ToContain("#L1")
+            expect(q).ToContain("#L2")
+            expect(q).ToContain("#L3")
+            expect(q).ToContain("Name = \"Final\"")
+        end)
+
+        -- 5. Control flow attributes
+        it("should handle control flow with attribute checks", function()
+            local q = QueryBuilder.fromOperation(function(x)
+                if x:GetAttribute("MyAttribute") ~= define(nil) then
+                    return x.Name == define("Target")
+                end
+
+                return x.Name == define("NotTarget")
+            end):ToQuery()
+            
+            expect(q).ToContain("[$MyAttribute]")
+            expect(q).ToContain("#Target")
+            expect(q).ToContain("#NotTarget")
         end)
     end)
 end

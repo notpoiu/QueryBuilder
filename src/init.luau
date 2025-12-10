@@ -31,6 +31,7 @@ export type QueryBuilder = {
 	_Tags: { string },
 	_Properties: { [string]: any },
 	_Attributes: { [string]: any },
+	_AttributeExistence: { string },
 	_Pseudos: { string },
 	_Combinator: { Type: string, Query: QueryBuilder }?,
 	_Alternatives: { QueryBuilder },
@@ -43,6 +44,7 @@ export type QueryBuilder = {
 	SetAttributes: (self: QueryBuilder, attrs: { [string]: any }) -> QueryBuilder,
 	SetProperty: (self: QueryBuilder, key: string, value: any) -> QueryBuilder,
 	SetAttribute: (self: QueryBuilder, key: string, value: any) -> QueryBuilder,
+	HasAttribute: (self: QueryBuilder, key: string) -> QueryBuilder,
 	
 	Child: (self: QueryBuilder, subQuery: QueryBuilder) -> QueryBuilder,
 	Descendant: (self: QueryBuilder, subQuery: QueryBuilder) -> QueryBuilder,
@@ -79,6 +81,7 @@ function QueryBuilder.new(): QueryBuilder
 		_Tags = {},
 		_Properties = {},
 		_Attributes = {},
+		_AttributeExistence = {},
 		_Pseudos = {},
 		_Combinator = nil,
 		_Alternatives = {},
@@ -102,6 +105,12 @@ local function BuildQueryFromData(data)
 			qb:SetAttribute(k, v)
 		end
 	end
+
+    if data.AttributeExistence then
+        for _, k in next, data.AttributeExistence do
+            qb:HasAttribute(k)
+        end
+    end
 	
 	-- Handle Not (Negations)
 	for _, note in next, data.Not do
@@ -118,7 +127,7 @@ local function BuildQueryFromData(data)
 	end
 	
 	-- Handle Has/NotHas (Children)
-	local function ProcessHas(list, negate)
+	local function ProcessHas(builder, list, negate)
 		for _, check in next, list do
 			local target = QueryBuilder.new()
 			if check.Mode == "Name" then
@@ -133,6 +142,12 @@ local function BuildQueryFromData(data)
 			if check.Attributes then
 				for k,v in next, check.Attributes do target:SetAttribute(k, v) end
 			end
+            if check.AttributeExistence then
+                for _, k in next, check.AttributeExistence do target:HasAttribute(k) end
+            end
+            if check.Tags then
+                for _, t in next, check.Tags do target:AddTag(t) end
+            end
 			
 			if check.NotProps or check.NotAttributes then
 			    local negation = QueryBuilder.new()
@@ -140,10 +155,27 @@ local function BuildQueryFromData(data)
 			        for _, p in next, check.NotProps do negation:SetProperty(p.Key, p.Val) end
 		        end
 		        if check.NotAttributes then
-		            for _, a in next, check.NotAttributes do negation:SetAttribute(a.Key, a.Val) end
+		            for _, a in next, check.NotAttributes do 
+                        if string.match(tostring(a.Val), "EXISTENCE_SENTINEL") then
+                             negation:HasAttribute(a.Key)
+                        else
+                             negation:SetAttribute(a.Key, a.Val) 
+                        end
+                    end
 	            end
 	            target:Not(negation)
 			end
+
+            -- Recurse
+            if check.Has then ProcessHas(target, check.Has, false) end
+            if check.NotHas then ProcessHas(target, check.NotHas, true) end
+            
+            -- Handle .Not (Tags/Generic negations on the child itself)
+            if check.Not then
+                 for _, n in next, check.Not do
+                     if n.Type == "Tag" then target:Not(QueryBuilder.new():AddTag(n.Val)) end
+                 end
+            end
 			
 			-- Recursive = true (Descendant) -> :has(target)
 			-- Recursive = false (Child) -> :has(> target)
@@ -159,15 +191,15 @@ local function BuildQueryFromData(data)
 			end
 			
 			if negate then
-				qb:Not(QueryBuilder.new():Has(hasQuery))
+				builder:Not(QueryBuilder.new():Has(hasQuery))
 			else
-				qb:Has(hasQuery)
+				builder:Has(hasQuery)
 			end
 		end
 	end
 	
-	if data.Has then ProcessHas(data.Has, false) end
-	if data.NotHas then ProcessHas(data.NotHas, true) end
+	if data.Has then ProcessHas(qb, data.Has, false) end
+	if data.NotHas then ProcessHas(qb, data.NotHas, true) end
 	
 	return qb
 end
@@ -244,6 +276,12 @@ end
 function QueryBuilder:SetAttribute(key: string, value: any): QueryBuilder
 	local instance = EnsureInstance(self)
 	instance._Attributes[key] = value
+	return instance
+end
+
+function QueryBuilder:HasAttribute(key: string): QueryBuilder
+	local instance = EnsureInstance(self)
+	table.insert(instance._AttributeExistence, key)
 	return instance
 end
 
@@ -342,11 +380,21 @@ function QueryBuilder:ToQuery(): string
 	end
 
 	table.sort(attrKeys)
-	
-	for _, k in next, attrKeys do
+    
+    for _, k in next, attrKeys do
 		local v = self._Attributes[k]
 		table.insert(parts, string.format("[$%s = %s]", k, FormatValue(v)))
 	end
+
+    -- 5b. Attribute Existence ([$Attr])
+    if self._AttributeExistence then
+        table.sort(self._AttributeExistence)
+        for _, k in next, self._AttributeExistence do
+            table.insert(parts, "[$" .. (k :: string) .. "]")
+        end
+    end
+	
+
 
 	-- 6. Pseudos (:not(), :has())
 	for _, pseudo in next, self._Pseudos :: any do

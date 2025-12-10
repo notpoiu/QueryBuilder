@@ -26,6 +26,7 @@ query-builder = "notpoiu/query-builder@0.2.1"
 | `:AddTag(tag)`              | Matches by CollectionService Tag | `.Tag`           |
 | `:SetProperty(key, value)`  | Matches by property value        | `[Key = Value]`  |
 | `:SetAttribute(key, value)` | Matches by attribute value       | `[$Key = Value]` |
+| `:HasAttribute(key)`        | Matches if attribute exists      | `[$Key]`         |
 
 ### Combinators & Modifiers
 
@@ -94,13 +95,15 @@ local Query = QueryBuilder.fromOperation(function(part)
     -- Properties
     return part.Name == v("Coin")
        and part.Transparency == v(0)
-       -- Attributes
+       -- Attribute Value
        and part:GetAttribute("IsCollectable") == v(true)
+       -- Attribute Existence (Value doesn't matter, just needs to exist)
+       and part:GetAttribute("SpawnId") ~= v(nil) -- or ~= v()
        -- CollectionService Tags
        and table.find(part.Tags, "Interactive")
 end):ToQuery()
 
--- Output: "#Coin.Interactive[Transparency = 0][$IsCollectable = true]"
+-- Output: "#Coin.Interactive[Transparency = 0][$IsCollectable = true][$SpawnId]"
 ```
 
 > [!IMPORTANT]
