@@ -526,5 +526,19 @@ return function()
             expect(q).ToContain("[Transparency = 0]")
             expect(q).ToContain("[Transparency = 1]")
         end)
+
+        -- 26. Yielding inside callback
+        it("should disallow yielding inside callback", function()
+             local success, err = pcall(function()
+                 QueryBuilder.fromOperation(function(x)
+                     coroutine.yield()
+                     return true
+                 end):ToQuery()
+             end)
+             
+             expect(success).ToEqual(false)
+             expect(err).ToContain("Unsatisfiable")
+             expect(err).ToContain("Yielding (coroutine.yield or task.wait/wait) is not allowed")
+        end)
     end)
 end

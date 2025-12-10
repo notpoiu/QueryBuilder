@@ -315,7 +315,23 @@ function Reflector.Parse(callback)
         })
         
         setfenv(callback, traceEnv)
-        pcall(function() callback(traceDescendant) end)
+        local noYield = setmetatable({}, {
+            __index = function()
+                callback(traceDescendant)
+                return true
+            end
+        })
+        
+        local success, err = pcall(function()
+            return noYield.__TRIGGER
+        end)
+
+        if not success then
+             local errStr = tostring(err)
+             if string.find(errStr, "attempt to yield") or string.find(errStr, "thread is not yieldable") then
+                 return nil, "Unsatisfiable: Yielding (coroutine.yield or task.wait/wait) is not allowed in query callbacks."
+             end
+        end
         
         TraceRecorder = nil
         
@@ -565,7 +581,23 @@ function Reflector.Parse(callback)
             
             setfenv(callback, verifyEnv)
             
-            local s, r = pcall(callback, testDescendant)
+            local noYield = setmetatable({}, { 
+                __index = function()
+                    return callback(testDescendant)
+                end
+            })
+
+            local s, r = pcall(function()
+                return noYield.__TRIGGER
+            end)
+            
+            if not s then
+                local errStr = tostring(r)
+                if string.find(errStr, "attempt to yield") or string.find(errStr, "thread is not yieldable") then
+                    error("Unsatisfiable: Yielding (coroutine.yield or task.wait/wait) is not allowed in query callbacks.")
+                end
+            end
+            
             return s and r
         end
         
