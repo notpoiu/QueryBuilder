@@ -264,6 +264,11 @@ function Reflector.Parse(callback)
                              FindFirstChildOfClass = GetChildInterceptor(key)("Class"),
                              GetAttribute = function(_, attrKey)
                                  return CreateToken({ Type = "ScopedAttribute", ScopeKey = key, Key = attrKey })
+                             end,
+                             IsA = function(_, className)
+                                 local prop = CreateToken({ Type = "ScopedProp", ScopeKey = key, Key = "ClassName" })
+                                 local val = CreateToken({ Type = "Val", Val = className })
+                                 return TraceRecorder(prop, val)
                              end
                         }
                     })
@@ -281,6 +286,11 @@ function Reflector.Parse(callback)
                 GetAttribute = function(_, key)
                     -- Return a token representing the value of this attribute
                     return CreateToken({ Type = "Attribute", Key = key })
+                end,
+                IsA = function(_, className)
+                    local prop = CreateToken({ Type = "Prop", Key = "ClassName" })
+                    local val = CreateToken({ Type = "Val", Val = className })
+                    return TraceRecorder(prop, val)
                 end
             } 
         })
@@ -489,6 +499,11 @@ function Reflector.Parse(callback)
                              local val = state[key]
                              -- if val == nil then val = "__REFLECT_RANDOM__" end
                              return CreateToken({ Type="Val", Val=val })
+                         end,
+                         IsA = function(_, className)
+                             local key = ScopedKey(sKey, "Prop", "ClassName")
+                             local val = state[key]
+                             return val == className
                          end
                     }
                 end
@@ -536,6 +551,11 @@ function Reflector.Parse(callback)
                  local val = state["Attr_"..key]
                  -- if val == nil then val = "__REFLECT_RANDOM__" end -- Attributes can be nil
                  return CreateToken({ Type = "Val", Val = val }) -- Attributes return values directly
+            end
+    
+            methods.IsA = function(_, className)
+                 local val = state["ClassName"]
+                 return val == className
             end
     
             mt.__index = function(_, k)

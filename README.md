@@ -63,7 +63,9 @@ local Query = QueryBuilder.new()
 print(#game:QueryDescendants(Query))
 ```
 
-## Function-Based Queries
+---
+
+## Function/Operation-Based Queries
 
 Instead of manually building strings or objects, you can also write a function that describes the object you want to find. `QueryBuilder` will reflect on your function to generate the correct query string.
 
@@ -79,9 +81,12 @@ The instance passed to your function is a **proxy**, not a real Instance. Only t
 | `:FindFirstChild(name, recursive?)`              | Checks for a direct child with the given name.                    |
 | `:FindFirstChildOfClass(className, recursive?)`  | Checks for a direct child with the given ClassName.               |
 | `:FindFirstChildWhichIsA(className, recursive?)` | Checks for a direct child that inherits from the given ClassName. |
+| `:IsA(className)`                                | Checks if the instance inherits from the given ClassName.         |
 
 > [!CAUTION]
-> Calling any other methods (like `:IsA()`, `:Clone()`, `:GetChildren()`) will result in an error or undefined behavior.
+> Calling any other methods (like `:Clone()`, `:GetChildren()`) will result in an error or undefined behavior.
+
+---
 
 ### Basic Queries
 
@@ -153,7 +158,7 @@ local Query = QueryBuilder.fromOperation(function(part)
     end
 end):ToQuery()
 
--- Output: ":has(> ProximityPrompt[Name = "Interact"]), #StaticPart:not(:has(> ProximityPrompt))"
+-- Output: ":has(> ProximityPrompt#Interact), #StaticPart:not(:has(> ProximityPrompt))"
 ```
 
 This allows you to express "A OR B" logic naturally.
