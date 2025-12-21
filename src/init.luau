@@ -118,8 +118,7 @@ local function BuildQueryFromData(data)
 		if note.Type == "Prop" then -- Inequality
 			if note.Key == "ClassName" then negation:SetClass(note.Val)
 			elseif note.Key == "Name" then negation:SetName(note.Val)
-			elseif note.Key:sub(1, 5) == "Attr_" then
-				negation:SetAttribute(note.Key:sub(6, -1), note.Val)
+			elseif note.Key:sub(1, 5) == "Attr_" then negation:SetAttribute(note.Key:sub(6, -1), note.Val)
 			else negation:SetProperty(note.Key, note.Val) end
 		elseif note.Type == "Tag" then
 			negation:AddTag(note.Val)
