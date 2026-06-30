@@ -12,21 +12,22 @@ Add `notpoiu/query-builder` to your `wally.toml`:
 
 ```toml
 [dependencies]
-query-builder = "notpoiu/query-builder@0.2.6"
+query-builder = "notpoiu/query-builder@0.2.7"
 ```
 
 ## Documentation
 
 ### Selectors
 
-| Method                      | Description                      | Syntax Match     |
-| :-------------------------- | :------------------------------- | :--------------- |
-| `:SetClass(className)`      | Matches by ClassName             | `ClassName`      |
-| `:SetName(name)`            | Matches by instance Name         | `#Name`          |
-| `:AddTag(tag)`              | Matches by CollectionService Tag | `.Tag`           |
-| `:SetProperty(key, value)`  | Matches by property value        | `[Key = Value]`  |
-| `:SetAttribute(key, value)` | Matches by attribute value       | `[$Key = Value]` |
-| `:HasAttribute(key)`        | Matches if attribute exists      | `[$Key]`         |
+| Method                      | Description                             | Syntax Match            |
+| :-------------------------- | :-------------------------------------- | :---------------------- |
+| `:SetClass(className)`      | Matches by ClassName                    | `ClassName`             |
+| `:SetName(name)`            | Matches by instance Name                | `#Name`                 |
+| `:AddTag(tag)`              | Matches by CollectionService Tag        | `.Tag`                  |
+| `:SetTargetInstance()`      | Marks this builder as the result target | `:has(...)` when needed |
+| `:SetProperty(key, value)`  | Matches by property value               | `[Key = Value]`         |
+| `:SetAttribute(key, value)` | Matches by attribute value              | `[$Key = Value]`        |
+| `:HasAttribute(key)`        | Matches if attribute exists             | `[$Key]`                |
 
 ### Combinators & Modifiers
 
@@ -57,10 +58,31 @@ local Query = QueryBuilder.new()
             :SetClass("VehicleSeat")
             :SetProperty("Disabled", false)
             :Not(QueryBuilder:AddTag("Broken"))
+            :SetTargetInstance()
     )
     :ToQuery()
 
 print(#game:QueryDescendants(Query))
+```
+
+### Targeting a Specific Instance
+
+By default, a `Child` or `Descendant` chain returns the last selector in the chain. Use `:SetTargetInstance()` when you want to make the result target explicit or keep an ancestor/intermediate selector as the returned instance.
+
+```lua
+local Query = QueryBuilder.new()
+    :SetClass("Model")
+    :SetName("Car")
+    :SetTargetInstance()
+    :Child(
+        QueryBuilder
+            :SetClass("VehicleSeat")
+            :SetProperty("Disabled", false)
+            :Not(QueryBuilder:AddTag("Broken"))
+    )
+    :ToQuery()
+
+-- Output: "Model#Car:has(> VehicleSeat[Disabled = false]:not(.Broken))"
 ```
 
 ---

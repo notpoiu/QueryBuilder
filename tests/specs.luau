@@ -133,6 +133,67 @@ return function()
             expect(q).ToContain(".MyTag")
         end)
     end)
+
+    d("QueryBuilder Target Instance", function()
+        it("should allow explicitly targeting a child selector", function()
+            local q = QueryBuilder.new()
+                :SetClass("Model")
+                :SetName("Car")
+                :Child(
+                    QueryBuilder
+                        :SetClass("VehicleSeat")
+                        :SetProperty("Disabled", false)
+                        :Not(QueryBuilder:AddTag("Broken"))
+                        :SetTargetInstance()
+                )
+                :ToQuery()
+
+            expect(q).ToEqual("Model#Car > VehicleSeat[Disabled = false]:not(.Broken)")
+        end)
+
+        it("should keep a marked parent as the returned target", function()
+            local q = QueryBuilder.new()
+                :SetClass("Model")
+                :SetName("Car")
+                :SetTargetInstance()
+                :Child(
+                    QueryBuilder
+                        :SetClass("VehicleSeat")
+                        :SetProperty("Disabled", false)
+                        :Not(QueryBuilder:AddTag("Broken"))
+                )
+                :ToQuery()
+
+            expect(q).ToEqual("Model#Car:has(> VehicleSeat[Disabled = false]:not(.Broken))")
+        end)
+
+        it("should keep a marked intermediate selector as the returned target", function()
+            local q = QueryBuilder.new()
+                :SetClass("Model")
+                :Child(
+                    QueryBuilder
+                        :SetClass("VehicleSeat")
+                        :SetTargetInstance()
+                        :Child(QueryBuilder:SetClass("Attachment"))
+                )
+                :ToQuery()
+
+            expect(q).ToEqual("Model > VehicleSeat:has(> Attachment)")
+        end)
+
+        it("should reject multiple target markers in one query chain", function()
+            local success, err = pcall(function()
+                QueryBuilder.new()
+                    :SetClass("Model")
+                    :SetTargetInstance()
+                    :Child(QueryBuilder:SetClass("VehicleSeat"):SetTargetInstance())
+                    :ToQuery()
+            end)
+
+            expect(success).ToEqual(false)
+            expect(err).ToContain("Only one target instance")
+        end)
+    end)
     
     d("QueryBuilder Negation", function()
          it("should handle negation", function()

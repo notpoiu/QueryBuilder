@@ -14,6 +14,7 @@
 					:SetClass("VehicleSeat")
 					:SetProperty("Disabled", false)
 					:Not(QueryBuilder:AddTag("Broken"))
+					:SetTargetInstance()
 			)
 			:ToQuery()
 
@@ -33,12 +34,14 @@ export type QueryBuilder = {
 	_Attributes: { [string]: any },
 	_AttributeExistence: { string },
 	_Pseudos: { string },
+	_IsTargetInstance: boolean,
 	_Combinator: { Type: string, Query: QueryBuilder }?,
 	_Alternatives: { QueryBuilder },
 	
 	SetClass: (self: QueryBuilder, className: string) -> QueryBuilder,
 	SetName: (self: QueryBuilder, name: string) -> QueryBuilder,
 	AddTag: (self: QueryBuilder, tag: string) -> QueryBuilder,
+	SetTargetInstance: (self: QueryBuilder) -> QueryBuilder,
 	
 	SetProperties: (self: QueryBuilder, props: { [string]: any }) -> QueryBuilder,
 	SetAttributes: (self: QueryBuilder, attrs: { [string]: any }) -> QueryBuilder,
@@ -83,6 +86,7 @@ function QueryBuilder.new(): QueryBuilder
 		_Attributes = {},
 		_AttributeExistence = {},
 		_Pseudos = {},
+		_IsTargetInstance = false,
 		_Combinator = nil,
 		_Alternatives = {},
 	}, QueryBuilder)
@@ -252,6 +256,12 @@ function QueryBuilder:AddTag(tag: string): QueryBuilder
 	return instance
 end
 
+function QueryBuilder:SetTargetInstance(): QueryBuilder
+	local instance = EnsureInstance(self)
+	instance._IsTargetInstance = true
+	return instance
+end
+
 function QueryBuilder:SetProperties(props: { [string]: any }): QueryBuilder
 	local instance = EnsureInstance(self)
 	for k, v in next, props do
@@ -345,7 +355,31 @@ local function FormatValue(value: any): string
 	end
 end
 
-function QueryBuilder:ToQuery(): string
+local function CountTargetInstances(builder: QueryBuilder, seen: { [QueryBuilder]: boolean }?): number
+	seen = seen or {}
+	if seen[builder] then
+		return 0
+	end
+	seen[builder] = true
+
+	local count = if builder._IsTargetInstance then 1 else 0
+	local combinator = builder._Combinator
+	if combinator then
+		count += CountTargetInstances(combinator.Query, seen)
+	end
+
+	return count
+end
+
+local function AppendCombinator(compound: string, combinatorType: string, query: string): string
+	if compound == "" then
+		return combinatorType .. " " .. query
+	else
+		return compound .. " " .. combinatorType .. " " .. query
+	end
+end
+
+local function BuildCompoundSelector(self: QueryBuilder): string
 	local parts: {string} = {}
 
 	-- 1. Class
@@ -407,8 +441,13 @@ function QueryBuilder:ToQuery(): string
 		table.insert(parts, pseudo :: string)
 	end
 
-	-- Combine compound selector
-	local compound = table.concat(parts, "")
+	return table.concat(parts, "")
+end
+
+function QueryBuilder:ToQuery(): string
+	assert(CountTargetInstances(self) <= 1, "Only one target instance can be set in a query chain")
+
+	local compound = BuildCompoundSelector(self)
 
 	-- 7. Combinator
 	local combinator = self._Combinator
@@ -416,10 +455,10 @@ function QueryBuilder:ToQuery(): string
 		assert(combinator.Query ~= self, "Recursive combinator detected")
 		
 		local query = combinator.Query:ToQuery() :: string
-		if compound == "" then
-			compound = (combinator.Type :: string) .. " " .. query
+		if self._IsTargetInstance then
+			compound = compound .. string.format(":has(%s)", AppendCombinator("", combinator.Type :: string, query))
 		else
-			compound = compound .. " " .. (combinator.Type :: string) .. " " .. query
+			compound = AppendCombinator(compound, combinator.Type :: string, query)
 		end
 	end
 
